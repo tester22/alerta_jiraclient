@@ -16,6 +16,8 @@ JIRA_API_USERNAME = os.environ.get('JIRA_API_USERNAME') or app.config.get('JIRA_
 JIRA_API_PASSWORD = os.environ.get('JIRA_API_PASSWORD') or app.config.get('JIRA_API_PASSWORD', '')
 JIRA_PROJECT_KEY = os.environ.get('JIRA_PROJECT_KEY') or app.config.get('JIRA_PROJECT_KEY', '')
 
+JIRA_ISSUE_TYPE =  os.environ.get('JIRA_ISSUE_TYPE') or app.config.get('JIRA_ISSUE_TYPE', 'Bug')
+
 class jiraClientEscalate(PluginBase):
 
     def pre_receive(self, alert):
@@ -37,13 +39,14 @@ class jiraClientEscalate(PluginBase):
                 'project': {'key': JIRA_PROJECT_KEY},
                 'summary': 'New issue from Alerta',
                 'description': 'Look into this one',
-                'issuetype': {'name': 'Bug'}
+                'issuetype': {'name': JIRA_ISSUE_TYPE}
             }
-            new_issue = jira_client.create_issue(fields=issue_dict)
-
+            
             try:
-                db.update_attributes(alert.id, {'JiraKey': str(new_issue)})
+                new_issue = jira_client.create_issue(fields=issue_dict)
+                alert.attributes['jiraKey'] = str(new_issue)
             except Exception as e:
-                raise RuntimeError("Jira: ERROR - %s", e)
-            LOG.debug('Jira: Added JiraKey %s to attributes', str(new_issue))
+                raise RuntimeError("Jira: Failed to create issue - %s", e)
 
+
+        return alert, status, text
