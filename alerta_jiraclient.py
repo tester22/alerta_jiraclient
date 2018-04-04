@@ -31,17 +31,29 @@ class jiraClientEscalate(PluginBase):
         if alert.status == status:
             return
 
-        if status == 'ack':
+        if status == 'ack' and alert.attributes['jiraKey'] == "None":
             
             #options = 
+            summary = "%s on %s" % (alert.event, alert.resource) 
+            description = alert.text
+            if 'moreInfo' in alert.attributes:
+                description = description + alert.attributes['moreInfo']
             jira_client = JIRA(options={'server': JIRA_API_URL}, basic_auth=(JIRA_API_USERNAME, JIRA_API_PASSWORD))
             issue_dict = {
                 'project': {'key': JIRA_PROJECT_KEY},
-                'summary': 'New issue from Alerta',
-                'description': 'Look into this one',
+                'summary': summary,
+                'description': description,
                 'issuetype': {'name': JIRA_ISSUE_TYPE}
             }
-            
+            if 'Insight Id' in alert.attributes:
+                issue_dict['customfield_10900'] = alert.attributes['Insight Id']
+
+            if 'Customer' in alert.attributes:
+                issue_dict['customfield_10002'] = alert.attributes['Customer']
+
+            if 'jiraProduct' in alert.attributes:
+                issue_dict['customfield_10422'] = alert.attributes['jiraProduct']
+
             try:
                 new_issue = jira_client.create_issue(fields=issue_dict)
                 alert.attributes['jiraKey'] = str(new_issue)
